@@ -34,3 +34,10 @@ export async function apiPost(path, body) {
     if (!res.ok) throw new Error(await res.text());
     return res.json();
 }
+
+export async function apiDelete(path) {
+    controllerPing();
+    const res = await fetch(`${API_BASE}${path}`, { method: "DELETE" });
+    if (!res.ok) throw new Error(await res.text());
+    return res.json();
+}

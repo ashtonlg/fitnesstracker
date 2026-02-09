@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { apiGet, apiPost, API_BASE } from "../api.js";
+import { apiDelete, apiGet, apiPost, API_BASE } from "../api.js";
 
 export default function Session({ nav, sessionId }) {
     const [exercises, setExercises] = useState([]);
@@ -26,6 +26,20 @@ export default function Session({ nav, sessionId }) {
             })
             .catch(() => {});
     }, [sessionId]);
+
+    useEffect(() => {
+        if (!sessionId) return;
+        loadEntries();
+    }, [sessionId]);
+
+    async function loadEntries() {
+        try {
+            const rows = await apiGet(`/sessions/${sessionId}/entries`);
+            setLog(rows);
+        } catch (e) {
+            setErr(String(e));
+        }
+    }
 
     useEffect(() => {
         if (!sessionId) return;
@@ -91,6 +105,7 @@ export default function Session({ nav, sessionId }) {
         try {
             if (!exerciseId) throw new Error("Select an exercise");
             if (weight === "" || reps === "") throw new Error("Enter weight and reps");
+            if (selectedUsesBodyweight && !bodyweight) throw new Error("Enter bodyweight for bodyweight exercises");
             const payload = {
                 exercise_id: Number(exerciseId),
                 weight_kg: Number(weight),
@@ -100,12 +115,32 @@ export default function Session({ nav, sessionId }) {
                 throw new Error("Enter valid weight and reps");
             }
 
-            const created = await apiPost(`/sessions/${sessionId}/entries`, payload);
-            const total = selectedUsesBodyweight && bodyweight
-                ? Number(payload.weight_kg) + Number(bodyweight)
-                : Number(payload.weight_kg);
-            setLog((prev) => [{ ...created, exercise_name: selectedName, total_kg: total }, ...prev]);
+            await apiPost(`/sessions/${sessionId}/entries`, payload);
+            await loadEntries();
             setReps("");
+        } catch (e) {
+            setErr(String(e));
+        }
+    }
+
+    async function deleteEntry(id) {
+        if (!confirm("Delete this set?")) return;
+        setErr("");
+        try {
+            await apiDelete(`/entries/${id}`);
+            setLog((prev) => prev.filter((x) => x.id !== id));
+        } catch (e) {
+            setErr(String(e));
+        }
+    }
+
+    async function deleteWorkout() {
+        if (!confirm("Delete this workout and all its logs?")) return;
+        setErr("");
+        try {
+            await apiDelete(`/sessions/${sessionId}`);
+            endedRef.current = true;
+            nav("home");
         } catch (e) {
             setErr(String(e));
         }
@@ -173,18 +208,22 @@ export default function Session({ nav, sessionId }) {
                 </button>
                 <button style={styles.danger} onClick={end}>End session</button>
             </div>
+            <button style={styles.dangerSoft} onClick={deleteWorkout}>Delete workout</button>
 
             <h3 style={styles.h3}>Logged (latest first)</h3>
             <div style={styles.log}>
                 {log.map((x) => (
                     <div key={x.id} style={styles.logRow}>
-                        <div style={{ fontWeight: 700 }}>{x.exercise_name}</div>
-                        <div style={styles.muted}>
-                            {x.total_kg && x.total_kg !== x.weight_kg
-                                ? `${x.weight_kg} kg + BW = ${x.total_kg} kg × ${x.reps}`
-                                : `${x.weight_kg} kg × ${x.reps}`
-                            }
+                        <div>
+                            <div style={{ fontWeight: 700 }}>{x.exercise_name}</div>
+                            <div style={styles.muted}>
+                                {x.total_kg && x.total_kg !== x.weight_kg
+                                    ? `${x.weight_kg} kg + BW = ${x.total_kg} kg × ${x.reps}`
+                                    : `${x.weight_kg} kg × ${x.reps}`
+                                }
+                            </div>
                         </div>
+                        <button style={styles.deleteMini} onClick={() => deleteEntry(x.id)}>Delete</button>
                     </div>
                 ))}
                 {log.length === 0 && <div style={styles.muted}>No sets logged yet.</div>}
@@ -208,8 +247,10 @@ const styles = {
     actions: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 10 },
     secondary: { padding: "12px 12px", borderRadius: 12, border: "1px solid #ddd", background: "#fff", fontWeight: 700 },
     danger: { padding: "12px 12px", borderRadius: 12, border: "1px solid #b00020", background: "#fff", color: "#b00020", fontWeight: 800 },
+    dangerSoft: { padding: "12px 12px", borderRadius: 12, border: "1px dashed #b00020", background: "#fff", color: "#b00020", fontWeight: 700, marginTop: 10 },
     log: { display: "flex", flexDirection: "column", gap: 8 },
-    logRow: { padding: "10px 12px", borderRadius: 12, border: "1px solid #eee", background: "#fafafa" },
+    logRow: { padding: "10px 12px", borderRadius: 12, border: "1px solid #eee", background: "#fafafa", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 },
+    deleteMini: { padding: "6px 8px", borderRadius: 8, border: "1px solid #b00020", background: "#fff", color: "#b00020", fontWeight: 700 },
     muted: { color: "#666", fontSize: 13 },
     err: { marginTop: 10, color: "#b00020", fontSize: 13 }
 };

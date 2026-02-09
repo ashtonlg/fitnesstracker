@@ -13,6 +13,7 @@ PRESET_EXERCISES = [
     "Romanian Deadlift",
     "Seated Row",
     "Chin-Up",
+    "Weighted Chin-Up",
     "Back Hyperextensions",
     "Cable Face Pull",
     "Barbell Row",
@@ -39,7 +40,7 @@ PRESET_EXERCISES = [
 
 def seed_exercises(db: Session) -> None:
     existing_names = set(db.exec(select(Exercise.name)).all())
-    bodyweight_exercises = {"Chin-Up", "Weighted Dip"}
+    bodyweight_exercises = {"Chin-Up", "Weighted Chin-Up", "Weighted Dip"}
 
     for name in PRESET_EXERCISES:
         if name in existing_names:
