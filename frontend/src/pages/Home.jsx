@@ -1,14 +1,13 @@
 import React, { useEffect, useState } from "react";
 import { apiDelete, apiGet, apiPost } from "../api.js";
+import { COLORS } from "../theme.js";
 
 export default function Home({ nav }) {
-    const [exercises, setExercises] = useState([]);
     const [sessions, setSessions] = useState([]);
     const [err, setErr] = useState("");
     const [bodyweight, setBodyweight] = useState("");
 
     useEffect(() => {
-        apiGet("/exercises").then(setExercises).catch((e) => setErr(String(e)));
         loadSessions();
     }, []);
 
@@ -61,49 +60,45 @@ export default function Home({ nav }) {
 
     return (
         <div style={styles.card}>
-            <h2 style={styles.h2}>Today</h2>
-            <div style={styles.field}>
+            <div style={styles.section}>
                 <label style={styles.label}>Bodyweight (kg)</label>
                 <input
                     style={styles.input}
                     inputMode="decimal"
                     value={bodyweight}
                     onChange={(e) => setBodyweight(e.target.value)}
-                    placeholder="required"
+                    placeholder="Required to start"
                 />
-            </div>
-            <button style={styles.primary} onClick={start}>Start session</button>
-
-            <h3 style={styles.h3}>Exercises (preset)</h3>
-            <div style={styles.list}>
-                {exercises.map((e) => (
-                    <button key={e.id} style={styles.rowBtn} onClick={() => nav("progress", { exerciseId: e.id })}>
-                        {e.name}
-                    </button>
-                ))}
+                <button style={styles.primary} onClick={start}>Start Session</button>
             </div>
 
-            <h3 style={styles.h3}>Workouts</h3>
-            <div style={styles.list}>
-                {sessions.map((s) => (
-                    <div key={s.id} style={styles.sessionRow}>
-                        <div>
-                            <div style={styles.sessionTitle}>Session #{s.id}</div>
-                            <div style={styles.mutedSmall}>
-                                {new Date(s.started_at).toLocaleString()} • {s.sets} sets
-                                {s.bodyweight_kg ? ` • ${s.bodyweight_kg} kg BW` : ""}
+            <div style={styles.divider} />
+
+            <div style={styles.section}>
+                <h3 style={styles.h3}>Workouts</h3>
+                <div style={styles.list}>
+                    {sessions.map((s) => (
+                        <div key={s.id} style={styles.sessionRow}>
+                            <div>
+                                <div style={styles.sessionTitle}>Session #{s.id}</div>
+                                <div style={styles.muted}>
+                                    {new Date(s.started_at).toLocaleDateString()} • {s.sets} sets
+                                    {s.bodyweight_kg ? ` • ${s.bodyweight_kg} kg` : ""}
+                                </div>
+                            </div>
+                            <div style={styles.sessionActions}>
+                                <button style={styles.secondarySmall} onClick={() => nav("session", { sessionId: s.id })}>Open</button>
+                                <button style={styles.dangerSmall} onClick={() => deleteSession(s.id)}>Delete</button>
                             </div>
                         </div>
-                        <div style={styles.sessionActions}>
-                            <button style={styles.rowBtn} onClick={() => nav("session", { sessionId: s.id })}>Open</button>
-                            <button style={styles.danger} onClick={() => deleteSession(s.id)}>Delete</button>
-                        </div>
-                    </div>
-                ))}
-                {sessions.length === 0 && <div style={styles.muted}>No workouts yet.</div>}
+                    ))}
+                    {sessions.length === 0 && <div style={styles.empty}>No workouts yet</div>}
+                </div>
             </div>
 
-            <button style={styles.secondary} onClick={resetData}>Reset all data</button>
+            <div style={styles.divider} />
+
+            <button style={styles.tertiary} onClick={resetData}>Reset all data</button>
 
             {err && <div style={styles.err}>{err}</div>}
         </div>
@@ -111,20 +106,127 @@ export default function Home({ nav }) {
 }
 
 const styles = {
-    card: { border: "1px solid #e6e6e6", borderRadius: 14, padding: 12, background: "#fff" },
-    h2: { margin: "0 0 10px 0" },
-    h3: { margin: "14px 0 8px 0" },
-    field: { display: "flex", flexDirection: "column", gap: 6, marginBottom: 10 },
-    label: { fontSize: 12, color: "#333" },
-    input: { padding: "10px 12px", borderRadius: 12, border: "1px solid #ddd", background: "#fff" },
-    primary: { padding: "12px 12px", borderRadius: 12, border: "1px solid #111", background: "#111", color: "#fff", fontWeight: 700 },
-    list: { display: "flex", flexDirection: "column", gap: 8, marginTop: 8 },
-    rowBtn: { textAlign: "left", padding: "10px 12px", borderRadius: 12, border: "1px solid #ddd", background: "#fff" },
-    sessionRow: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 12, border: "1px solid #eee", background: "#fafafa" },
-    sessionTitle: { fontWeight: 700 },
-    sessionActions: { display: "flex", gap: 8 },
-    secondary: { padding: "12px 12px", borderRadius: 12, border: "1px solid #ddd", background: "#fff", fontWeight: 700, marginTop: 10 },
-    danger: { padding: "10px 12px", borderRadius: 12, border: "1px solid #b00020", background: "#fff", color: "#b00020", fontWeight: 800 },
-    mutedSmall: { color: "#666", fontSize: 12 },
-    err: { marginTop: 10, color: "#b00020", fontSize: 13 }
+    card: {
+        borderRadius: 20,
+        padding: 20,
+        background: COLORS.card,
+    },
+    section: {
+        display: "flex",
+        flexDirection: "column",
+        gap: 12,
+    },
+    divider: {
+        height: 1,
+        background: COLORS.border,
+        margin: "20px 0",
+    },
+    label: {
+        fontSize: 13,
+        color: COLORS.textMuted,
+        fontWeight: 500,
+        textTransform: "uppercase",
+        letterSpacing: "0.5px",
+    },
+    input: {
+        padding: "12px 16px",
+        borderRadius: 9999,
+        border: `1px solid ${COLORS.border}`,
+        background: COLORS.bg,
+        fontSize: 15,
+        outline: "none",
+    },
+    primary: {
+        padding: "14px 24px",
+        borderRadius: 9999,
+        border: "none",
+        background: COLORS.mustard,
+        color: "#fff",
+        fontWeight: 600,
+        fontSize: 15,
+        cursor: "pointer",
+    },
+    h3: {
+        margin: 0,
+        fontSize: 14,
+        color: COLORS.textMuted,
+        fontWeight: 500,
+        textTransform: "uppercase",
+        letterSpacing: "0.5px",
+    },
+    list: {
+        display: "flex",
+        flexDirection: "column",
+        gap: 8,
+    },
+    sessionRow: {
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        gap: 12,
+        padding: "14px 16px",
+        borderRadius: 16,
+        background: COLORS.bg,
+    },
+    sessionTitle: {
+        fontWeight: 600,
+        fontSize: 15,
+        color: COLORS.text,
+    },
+    sessionActions: {
+        display: "flex",
+        gap: 8,
+    },
+    secondarySmall: {
+        padding: "8px 14px",
+        borderRadius: 9999,
+        border: "none",
+        background: COLORS.card,
+        color: COLORS.text,
+        fontWeight: 500,
+        fontSize: 13,
+        cursor: "pointer",
+        boxShadow: `0 1px 2px rgba(0,0,0,0.05)`,
+    },
+    dangerSmall: {
+        padding: "8px 14px",
+        borderRadius: 9999,
+        border: "none",
+        background: "transparent",
+        color: COLORS.danger,
+        fontWeight: 500,
+        fontSize: 13,
+        cursor: "pointer",
+    },
+    tertiary: {
+        padding: "12px 20px",
+        borderRadius: 9999,
+        border: "none",
+        background: "transparent",
+        color: COLORS.textMuted,
+        fontWeight: 500,
+        fontSize: 14,
+        cursor: "pointer",
+        alignSelf: "center",
+    },
+    muted: {
+        color: COLORS.textMuted,
+        fontSize: 13,
+        marginTop: 2,
+    },
+    empty: {
+        color: COLORS.textMuted,
+        fontSize: 14,
+        textAlign: "center",
+        padding: "20px 0",
+    },
+    err: {
+        marginTop: 12,
+        color: COLORS.danger,
+        fontSize: 14,
+        textAlign: "center",
+        padding: "12px 16px",
+        background: "#fdf2f2",
+        borderRadius: 12,
+    },
 };

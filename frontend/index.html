@@ -9,6 +9,38 @@
 
 <body style="margin:0;background:#f6f6f6;">
     <div id="root"></div>
+    <script>
+        (function () {
+            function showError(msg) {
+                var el = document.getElementById('__runtime_error__');
+                if (!el) {
+                    el = document.createElement('pre');
+                    el.id = '__runtime_error__';
+                    el.style.whiteSpace = 'pre-wrap';
+                    el.style.wordBreak = 'break-word';
+                    el.style.margin = '16px';
+                    el.style.padding = '12px';
+                    el.style.background = '#fff3f3';
+                    el.style.color = '#9b1c1c';
+                    el.style.border = '1px solid #fecaca';
+                    el.style.borderRadius = '12px';
+                    el.style.fontFamily = 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace';
+                    document.body.insertBefore(el, document.body.firstChild);
+                }
+                el.textContent = msg;
+            }
+            window.addEventListener('error', function (e) {
+                var msg = 'Runtime error: ' + (e && e.message ? e.message : String(e));
+                if (e && e.filename) msg += '\n' + e.filename + ':' + e.lineno + ':' + e.colno;
+                showError(msg);
+            });
+            window.addEventListener('unhandledrejection', function (e) {
+                var reason = e && e.reason ? e.reason : e;
+                var msg = 'Unhandled promise rejection: ' + (reason && reason.message ? reason.message : String(reason));
+                showError(msg);
+            });
+        })();
+    </script>
     <script type="module" src="/src/main.jsx"></script>
 </body>
 

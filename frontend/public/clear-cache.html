@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Clear Cache</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif; margin: 24px; color: #111; }
+    .status { margin-top: 12px; color: #444; }
+    a { color: #0ea5e9; }
+  </style>
+</head>
+<body>
+  <h1>Clearing cache...</h1>
+  <div class="status" id="status">Working...</div>
+  <div class="status" id="link"></div>
+  <script>
+    async function clearAll() {
+      try {
+        if ('caches' in window) {
+          const keys = await caches.keys();
+          await Promise.all(keys.map((k) => caches.delete(k)));
+        }
+        if ('serviceWorker' in navigator) {
+          const regs = await navigator.serviceWorker.getRegistrations();
+          await Promise.all(regs.map((r) => r.unregister()));
+        }
+        try { localStorage.clear(); } catch (_) {}
+        try { sessionStorage.clear(); } catch (_) {}
+        if ('indexedDB' in window && indexedDB.databases) {
+          const dbs = await indexedDB.databases();
+          await Promise.all(dbs.map((db) => new Promise((resolve) => {
+            if (!db.name) return resolve();
+            const req = indexedDB.deleteDatabase(db.name);
+            req.onsuccess = req.onerror = req.onblocked = () => resolve();
+          })));
+        }
+        document.getElementById('status').textContent = 'Done. You can close this tab.';
+      } catch (e) {
+        document.getElementById('status').textContent = 'Done (some items may require manual clear).';
+      }
+
+      const home = new URL('/', window.location.href).toString();
+      document.getElementById('link').innerHTML = `Open app: <a href="${home}">${home}</a>`;
+    }
+
+    clearAll();
+  </script>
+</body>
+</html>

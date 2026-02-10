@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { apiDelete, apiGet, apiPost } from "../api.js";
+import { COLORS } from "../theme.js";
 
 export default function Goals() {
     const [exercises, setExercises] = useState([]);
@@ -122,77 +123,85 @@ export default function Goals() {
 
     return (
         <div style={styles.card}>
-            <h2 style={styles.h2}>Goals</h2>
-
-            <div style={styles.summaryCard}>
-                <div>
-                    <div style={styles.summaryTitle}>Chin-up counter</div>
-                    <div style={styles.muted}>
-                        {summary ? summary.chinup_reps : 0} reps · {summary ? summary.chinup_sets : 0} sets
-                    </div>
+            <div style={styles.statsGrid}>
+                <div style={styles.statCard}>
+                    <div style={styles.statValue}>{summary ? summary.chinup_reps : 0}</div>
+                    <div style={styles.statLabel}>Chin-up Reps</div>
                 </div>
-                <div>
-                    <div style={styles.summaryTitle}>Avg load per set</div>
-                    <div style={styles.muted}>
-                        {summary ? summary.avg_load_kg.toFixed(1) : "0.0"} kg
-                    </div>
+                <div style={styles.statCard}>
+                    <div style={styles.statValue}>{summary ? summary.avg_load_kg.toFixed(1) : "0.0"}</div>
+                    <div style={styles.statLabel}>Avg Load (kg)</div>
                 </div>
             </div>
 
-            <h3 style={styles.h3}>Add goal</h3>
-            <div style={styles.field}>
-                <label style={styles.label}>Type</label>
-                <select style={styles.input} value={type} onChange={(e) => setType(e.target.value)}>
-                    <option value="pr">PR (exercise, weight, reps)</option>
-                    <option value="frequency">Frequency (sessions/week)</option>
-                </select>
+            <div style={styles.divider} />
+
+            <div style={styles.section}>
+                <h3 style={styles.h3}>New Goal</h3>
+                <div style={styles.typeSelect}>
+                    <button
+                        style={type === "pr" ? styles.typeBtnActive : styles.typeBtn}
+                        onClick={() => setType("pr")}
+                    >
+                        PR Goal
+                    </button>
+                    <button
+                        style={type === "frequency" ? styles.typeBtnActive : styles.typeBtn}
+                        onClick={() => setType("frequency")}
+                    >
+                        Frequency
+                    </button>
+                </div>
+
+                {type === "pr" ? (
+                    <>
+                        <div style={styles.section}>
+                            <label style={styles.label}>Exercise</label>
+                            <select style={styles.select} value={exerciseId} onChange={(e) => setExerciseId(e.target.value)}>
+                                <option value="">Select exercise…</option>
+                                {exercises.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
+                            </select>
+                        </div>
+                        <div style={styles.grid}>
+                            <div style={styles.section}>
+                                <label style={styles.label}>Target Weight (kg)</label>
+                                <input style={styles.input} inputMode="decimal" value={targetWeight} onChange={(e) => setTargetWeight(e.target.value)} placeholder="0" />
+                            </div>
+                            <div style={styles.section}>
+                                <label style={styles.label}>Target Reps</label>
+                                <input style={styles.input} inputMode="numeric" value={targetReps} onChange={(e) => setTargetReps(e.target.value)} placeholder="0" />
+                            </div>
+                        </div>
+                    </>
+                ) : (
+                    <div style={styles.section}>
+                        <label style={styles.label}>Sessions per Week</label>
+                        <input style={styles.input} inputMode="numeric" value={targetFreq} onChange={(e) => setTargetFreq(e.target.value)} placeholder="e.g. 4" />
+                    </div>
+                )}
+
+                <button style={styles.primary} onClick={addGoal}>Add Goal</button>
             </div>
 
-            {type === "pr" ? (
-                <>
-                    <div style={styles.field}>
-                        <label style={styles.label}>Exercise</label>
-                        <select style={styles.input} value={exerciseId} onChange={(e) => setExerciseId(e.target.value)}>
-                            <option value="">Select…</option>
-                            {exercises.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
-                        </select>
-                    </div>
-                    <div style={styles.grid}>
-                        <div style={styles.field}>
-                            <label style={styles.label}>Target weight (kg)</label>
-                            <input style={styles.input} inputMode="decimal" value={targetWeight} onChange={(e) => setTargetWeight(e.target.value)} />
-                        </div>
-                        <div style={styles.field}>
-                            <label style={styles.label}>Target reps</label>
-                            <input style={styles.input} inputMode="numeric" value={targetReps} onChange={(e) => setTargetReps(e.target.value)} />
-                        </div>
-                    </div>
-                </>
-            ) : (
-                <div style={styles.field}>
-                    <label style={styles.label}>Sessions per week</label>
-                    <input style={styles.input} inputMode="numeric" value={targetFreq} onChange={(e) => setTargetFreq(e.target.value)} />
-                </div>
-            )}
+            <div style={styles.divider} />
 
-            <button style={styles.primary} onClick={addGoal}>Add goal</button>
-
-            <h3 style={styles.h3}>Your goals</h3>
+            <h3 style={styles.h3}>Your Goals</h3>
             <div style={styles.list}>
                 {goals.map((g) => (
                     <div key={g.id} style={styles.goalRow}>
-                        <div>
+                        <div style={styles.goalContent}>
                             <div style={styles.goalTitle}>
                                 {g.type === "pr"
                                     ? `${exerciseName(exercises, g.exercise_id)} PR`
-                                    : "Frequency"}
+                                    : "Weekly Frequency"
+                                }
                             </div>
                             {g.type === "pr" ? (
-                                <div style={styles.muted}>
+                                <div style={styles.goalTarget}>
                                     Target: {g.target_weight_kg} kg × {g.target_reps}
                                 </div>
                             ) : (
-                                <div style={styles.muted}>
+                                <div style={styles.goalTarget}>
                                     Target: {g.target_sessions_per_week} sessions/week
                                 </div>
                             )}
@@ -207,7 +216,7 @@ export default function Goals() {
                         <button style={styles.deleteMini} onClick={() => deleteGoal(g.id)}>Delete</button>
                     </div>
                 ))}
-                {goals.length === 0 && <div style={styles.muted}>No goals yet.</div>}
+                {goals.length === 0 && <div style={styles.empty}>No goals yet</div>}
             </div>
 
             {err && <div style={styles.err}>{err}</div>}
@@ -239,13 +248,13 @@ function exerciseName(exercises, id) {
 }
 
 function PrProgress({ progress, goal }) {
-    if (!progress || !progress.best) return <span style={styles.muted}>No sets yet.</span>;
+    if (!progress || !progress.best) return <span style={styles.muted}>No sets yet</span>;
     const pct = Math.round(progress.percent * 100);
     return (
         <div>
-            <div style={styles.muted}>{pct}% • Best {progress.best.total_kg.toFixed(1)} kg × {progress.best.reps}</div>
+            <div style={styles.progressText}>{pct}% • Best {progress.best.total_kg.toFixed(1)} kg × {progress.best.reps}</div>
             {!progress.hasMatch && (
-                <div style={styles.mutedSmall}>No sets at {goal.target_reps}+ reps yet.</div>
+                <div style={styles.hint}>No sets at {goal.target_reps}+ reps yet</div>
             )}
         </div>
     );
@@ -255,29 +264,192 @@ function FrequencyProgress({ count, goal }) {
     const target = Number(goal.target_sessions_per_week || 0);
     const pct = target > 0 ? Math.min(1, count / target) : 0;
     return (
-        <div style={styles.muted}>
+        <div style={styles.progressText}>
             {Math.round(pct * 100)}% • {count} of {target} sessions (last 7 days)
         </div>
     );
 }
 
 const styles = {
-    card: { border: "1px solid #e6e6e6", borderRadius: 14, padding: 12, background: "#fff" },
-    h2: { margin: "0 0 10px 0" },
-    h3: { margin: "14px 0 8px 0" },
-    field: { display: "flex", flexDirection: "column", gap: 6, marginBottom: 10 },
-    label: { fontSize: 12, color: "#333" },
-    input: { padding: "10px 12px", borderRadius: 12, border: "1px solid #ddd", background: "#fff" },
-    grid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 },
-    primary: { padding: "12px 12px", borderRadius: 12, border: "1px solid #111", background: "#111", color: "#fff", fontWeight: 700, width: "100%" },
-    list: { display: "flex", flexDirection: "column", gap: 8, marginTop: 8 },
-    goalRow: { padding: "10px 12px", borderRadius: 12, border: "1px solid #eee", background: "#fafafa", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 },
-    goalTitle: { fontWeight: 800 },
-    progress: { marginTop: 6 },
-    deleteMini: { padding: "6px 8px", borderRadius: 8, border: "1px solid #b00020", background: "#fff", color: "#b00020", fontWeight: 700 },
-    summaryCard: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, padding: "10px 12px", borderRadius: 12, border: "1px solid #eee", background: "#fafafa" },
-    summaryTitle: { fontWeight: 800 },
-    muted: { color: "#666", fontSize: 13 },
-    mutedSmall: { color: "#666", fontSize: 12 },
-    err: { marginTop: 10, color: "#b00020", fontSize: 13 }
+    card: {
+        borderRadius: 20,
+        padding: 20,
+        background: COLORS.card,
+    },
+    statsGrid: {
+        display: "grid",
+        gridTemplateColumns: "1fr 1fr",
+        gap: 12,
+    },
+    statCard: {
+        padding: "16px",
+        borderRadius: 16,
+        background: COLORS.bg,
+        textAlign: "center",
+    },
+    statValue: {
+        fontSize: 24,
+        fontWeight: 700,
+        color: COLORS.mustard,
+    },
+    statLabel: {
+        fontSize: 12,
+        color: COLORS.textMuted,
+        marginTop: 4,
+        textTransform: "uppercase",
+        letterSpacing: "0.5px",
+    },
+    section: {
+        display: "flex",
+        flexDirection: "column",
+        gap: 12,
+    },
+    divider: {
+        height: 1,
+        background: COLORS.border,
+        margin: "20px 0",
+    },
+    h3: {
+        margin: 0,
+        fontSize: 14,
+        color: COLORS.textMuted,
+        fontWeight: 500,
+        textTransform: "uppercase",
+        letterSpacing: "0.5px",
+    },
+    typeSelect: {
+        display: "flex",
+        gap: 8,
+    },
+    typeBtn: {
+        flex: 1,
+        padding: "10px 16px",
+        borderRadius: 9999,
+        border: "none",
+        background: COLORS.bg,
+        color: COLORS.textMuted,
+        fontWeight: 500,
+        fontSize: 14,
+        cursor: "pointer",
+    },
+    typeBtnActive: {
+        flex: 1,
+        padding: "10px 16px",
+        borderRadius: 9999,
+        border: "none",
+        background: COLORS.mustardLight,
+        color: COLORS.mustardDark,
+        fontWeight: 600,
+        fontSize: 14,
+        cursor: "pointer",
+    },
+    label: {
+        fontSize: 13,
+        color: COLORS.textMuted,
+        fontWeight: 500,
+        textTransform: "uppercase",
+        letterSpacing: "0.5px",
+    },
+    input: {
+        padding: "12px 16px",
+        borderRadius: 9999,
+        border: `1px solid ${COLORS.border}`,
+        background: COLORS.bg,
+        fontSize: 15,
+        outline: "none",
+    },
+    select: {
+        padding: "12px 16px",
+        borderRadius: 9999,
+        border: `1px solid ${COLORS.border}`,
+        background: COLORS.bg,
+        fontSize: 15,
+        outline: "none",
+        cursor: "pointer",
+    },
+    grid: {
+        display: "grid",
+        gridTemplateColumns: "1fr 1fr",
+        gap: 12,
+    },
+    primary: {
+        padding: "14px 24px",
+        borderRadius: 9999,
+        border: "none",
+        background: COLORS.mustard,
+        color: "#fff",
+        fontWeight: 600,
+        fontSize: 15,
+        cursor: "pointer",
+        marginTop: 4,
+    },
+    list: {
+        display: "flex",
+        flexDirection: "column",
+        gap: 10,
+    },
+    goalRow: {
+        padding: "16px",
+        borderRadius: 16,
+        background: COLORS.bg,
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "flex-start",
+        gap: 12,
+    },
+    goalContent: {
+        flex: 1,
+    },
+    goalTitle: {
+        fontWeight: 600,
+        fontSize: 15,
+        color: COLORS.text,
+    },
+    goalTarget: {
+        fontSize: 13,
+        color: COLORS.textMuted,
+        marginTop: 2,
+    },
+    progress: {
+        marginTop: 8,
+    },
+    progressText: {
+        fontSize: 13,
+        color: COLORS.mustardDark,
+        fontWeight: 500,
+    },
+    deleteMini: {
+        padding: "6px 12px",
+        borderRadius: 9999,
+        border: "none",
+        background: "transparent",
+        color: COLORS.danger,
+        fontWeight: 500,
+        fontSize: 13,
+        cursor: "pointer",
+    },
+    muted: {
+        color: COLORS.textMuted,
+        fontSize: 13,
+    },
+    hint: {
+        fontSize: 12,
+        color: COLORS.textMuted,
+        marginTop: 2,
+    },
+    empty: {
+        color: COLORS.textMuted,
+        fontSize: 14,
+        textAlign: "center",
+        padding: "20px 0",
+    },
+    err: {
+        marginTop: 12,
+        color: COLORS.danger,
+        fontSize: 14,
+        textAlign: "center",
+        padding: "12px 16px",
+        background: "#fdf2f2",
+        borderRadius: 12,
+    },
 };

@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { apiDelete, apiGet, apiPost, API_BASE } from "../api.js";
+import { COLORS } from "../theme.js";
 
 export default function Session({ nav, sessionId }) {
     const [exercises, setExercises] = useState([]);
@@ -159,9 +160,12 @@ export default function Session({ nav, sessionId }) {
 
     return (
         <div style={styles.card}>
-            <h2 style={styles.h2}>Session #{sessionId}</h2>
+            <div style={styles.header}>
+                <h2 style={styles.h2}>Session #{sessionId}</h2>
+                <button style={styles.endBtn} onClick={end}>End</button>
+            </div>
 
-            <div style={styles.field}>
+            <div style={styles.section}>
                 <label style={styles.label}>Bodyweight (kg)</label>
                 <div style={styles.inline}>
                     <input
@@ -169,54 +173,51 @@ export default function Session({ nav, sessionId }) {
                         inputMode="decimal"
                         value={bodyweight}
                         onChange={(e) => setBodyweight(e.target.value)}
-                        placeholder="optional"
+                        placeholder="Optional"
                     />
                     <button style={styles.secondary} onClick={saveBodyweight}>Save</button>
                 </div>
-                {bodyweightSaved && <div style={styles.muted}>Saved.</div>}
+                {bodyweightSaved && <span style={styles.saved}>Saved</span>}
             </div>
 
-            <div style={styles.field}>
+            <div style={styles.divider} />
+
+            <div style={styles.section}>
                 <label style={styles.label}>Exercise</label>
-                <select style={styles.input} value={exerciseId} onChange={(e) => setExerciseId(e.target.value)}>
-                    <option value="">Select…</option>
+                <select style={styles.select} value={exerciseId} onChange={(e) => setExerciseId(e.target.value)}>
+                    <option value="">Select exercise…</option>
                     {exercises.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
                 </select>
             </div>
 
             <div style={styles.grid}>
-                <div style={styles.field}>
+                <div style={styles.section}>
                     <label style={styles.label}>Weight (kg)</label>
-                    <input style={styles.input} inputMode="decimal" value={weight} onChange={(e) => setWeight(e.target.value)} placeholder="e.g. 80" />
+                    <input style={styles.input} inputMode="decimal" value={weight} onChange={(e) => setWeight(e.target.value)} placeholder="0" />
                 </div>
-                <div style={styles.field}>
+                <div style={styles.section}>
                     <label style={styles.label}>Reps</label>
-                    <input style={styles.input} inputMode="numeric" value={reps} onChange={(e) => setReps(e.target.value)} placeholder="e.g. 8" />
+                    <input style={styles.input} inputMode="numeric" value={reps} onChange={(e) => setReps(e.target.value)} placeholder="0" />
                 </div>
             </div>
+
             {selectedUsesBodyweight && (
-                <div style={styles.muted}>
-                    Total load (includes bodyweight): {effectiveWeight || 0} kg
+                <div style={styles.hint}>
+                    Total load: {effectiveWeight || 0} kg (includes bodyweight)
                 </div>
             )}
 
-            <button style={styles.primary} onClick={addSet}>Log set</button>
+            <button style={styles.primary} onClick={addSet}>Log Set</button>
 
-            <div style={styles.actions}>
-                <button style={styles.secondary} onClick={() => nav("progress", { exerciseId })} disabled={!exerciseId}>
-                    View progression
-                </button>
-                <button style={styles.danger} onClick={end}>End session</button>
-            </div>
-            <button style={styles.dangerSoft} onClick={deleteWorkout}>Delete workout</button>
+            <div style={styles.divider} />
 
-            <h3 style={styles.h3}>Logged (latest first)</h3>
+            <h3 style={styles.h3}>Logged Sets</h3>
             <div style={styles.log}>
                 {log.map((x) => (
                     <div key={x.id} style={styles.logRow}>
                         <div>
-                            <div style={{ fontWeight: 700 }}>{x.exercise_name}</div>
-                            <div style={styles.muted}>
+                            <div style={styles.logExercise}>{x.exercise_name}</div>
+                            <div style={styles.logDetail}>
                                 {x.total_kg && x.total_kg !== x.weight_kg
                                     ? `${x.weight_kg} kg + BW = ${x.total_kg} kg × ${x.reps}`
                                     : `${x.weight_kg} kg × ${x.reps}`
@@ -226,7 +227,16 @@ export default function Session({ nav, sessionId }) {
                         <button style={styles.deleteMini} onClick={() => deleteEntry(x.id)}>Delete</button>
                     </div>
                 ))}
-                {log.length === 0 && <div style={styles.muted}>No sets logged yet.</div>}
+                {log.length === 0 && <div style={styles.empty}>No sets logged yet</div>}
+            </div>
+
+            <div style={styles.divider} />
+
+            <div style={styles.actions}>
+                <button style={styles.tertiary} onClick={() => nav("progress", { exerciseId })} disabled={!exerciseId}>
+                    View Progress
+                </button>
+                <button style={styles.danger} onClick={deleteWorkout}>Delete Workout</button>
             </div>
 
             {err && <div style={styles.err}>{err}</div>}
@@ -235,22 +245,189 @@ export default function Session({ nav, sessionId }) {
 }
 
 const styles = {
-    card: { border: "1px solid #e6e6e6", borderRadius: 14, padding: 12, background: "#fff" },
-    h2: { margin: "0 0 10px 0" },
-    h3: { margin: "14px 0 8px 0" },
-    field: { display: "flex", flexDirection: "column", gap: 6, marginBottom: 10 },
-    inline: { display: "flex", gap: 8, alignItems: "center" },
-    label: { fontSize: 12, color: "#333" },
-    input: { padding: "10px 12px", borderRadius: 12, border: "1px solid #ddd", background: "#fff" },
-    grid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 },
-    primary: { padding: "12px 12px", borderRadius: 12, border: "1px solid #111", background: "#111", color: "#fff", fontWeight: 700, width: "100%" },
-    actions: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 10 },
-    secondary: { padding: "12px 12px", borderRadius: 12, border: "1px solid #ddd", background: "#fff", fontWeight: 700 },
-    danger: { padding: "12px 12px", borderRadius: 12, border: "1px solid #b00020", background: "#fff", color: "#b00020", fontWeight: 800 },
-    dangerSoft: { padding: "12px 12px", borderRadius: 12, border: "1px dashed #b00020", background: "#fff", color: "#b00020", fontWeight: 700, marginTop: 10 },
-    log: { display: "flex", flexDirection: "column", gap: 8 },
-    logRow: { padding: "10px 12px", borderRadius: 12, border: "1px solid #eee", background: "#fafafa", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 },
-    deleteMini: { padding: "6px 8px", borderRadius: 8, border: "1px solid #b00020", background: "#fff", color: "#b00020", fontWeight: 700 },
-    muted: { color: "#666", fontSize: 13 },
-    err: { marginTop: 10, color: "#b00020", fontSize: 13 }
+    card: {
+        borderRadius: 20,
+        padding: 20,
+        background: COLORS.card,
+    },
+    header: {
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        marginBottom: 16,
+    },
+    h2: {
+        margin: 0,
+        fontSize: 20,
+        fontWeight: 700,
+        color: COLORS.text,
+    },
+    section: {
+        display: "flex",
+        flexDirection: "column",
+        gap: 8,
+    },
+    divider: {
+        height: 1,
+        background: COLORS.border,
+        margin: "16px 0",
+    },
+    label: {
+        fontSize: 13,
+        color: COLORS.textMuted,
+        fontWeight: 500,
+        textTransform: "uppercase",
+        letterSpacing: "0.5px",
+    },
+    input: {
+        padding: "12px 16px",
+        borderRadius: 9999,
+        border: `1px solid ${COLORS.border}`,
+        background: COLORS.bg,
+        fontSize: 15,
+        outline: "none",
+    },
+    select: {
+        padding: "12px 16px",
+        borderRadius: 9999,
+        border: `1px solid ${COLORS.border}`,
+        background: COLORS.bg,
+        fontSize: 15,
+        outline: "none",
+        cursor: "pointer",
+    },
+    inline: {
+        display: "flex",
+        gap: 10,
+        alignItems: "center",
+    },
+    grid: {
+        display: "grid",
+        gridTemplateColumns: "1fr 1fr",
+        gap: 12,
+        marginTop: 12,
+    },
+    primary: {
+        padding: "14px 24px",
+        borderRadius: 9999,
+        border: "none",
+        background: COLORS.mustard,
+        color: "#fff",
+        fontWeight: 600,
+        fontSize: 15,
+        cursor: "pointer",
+        marginTop: 16,
+    },
+    secondary: {
+        padding: "10px 18px",
+        borderRadius: 9999,
+        border: "none",
+        background: COLORS.bg,
+        color: COLORS.text,
+        fontWeight: 600,
+        fontSize: 14,
+        cursor: "pointer",
+    },
+    tertiary: {
+        padding: "10px 18px",
+        borderRadius: 9999,
+        border: "none",
+        background: COLORS.bg,
+        color: COLORS.textMuted,
+        fontWeight: 500,
+        fontSize: 14,
+        cursor: "pointer",
+    },
+    endBtn: {
+        padding: "8px 16px",
+        borderRadius: 9999,
+        border: "none",
+        background: COLORS.mustardLight,
+        color: COLORS.mustardDark,
+        fontWeight: 600,
+        fontSize: 13,
+        cursor: "pointer",
+    },
+    danger: {
+        padding: "10px 18px",
+        borderRadius: 9999,
+        border: "none",
+        background: "transparent",
+        color: COLORS.danger,
+        fontWeight: 500,
+        fontSize: 14,
+        cursor: "pointer",
+    },
+    hint: {
+        fontSize: 13,
+        color: COLORS.textMuted,
+        marginTop: 4,
+    },
+    saved: {
+        fontSize: 13,
+        color: COLORS.mustardDark,
+        fontWeight: 500,
+    },
+    h3: {
+        margin: 0,
+        fontSize: 14,
+        color: COLORS.textMuted,
+        fontWeight: 500,
+        textTransform: "uppercase",
+        letterSpacing: "0.5px",
+    },
+    log: {
+        display: "flex",
+        flexDirection: "column",
+        gap: 8,
+    },
+    logRow: {
+        padding: "14px 16px",
+        borderRadius: 16,
+        background: COLORS.bg,
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        gap: 10,
+    },
+    logExercise: {
+        fontWeight: 600,
+        fontSize: 15,
+        color: COLORS.text,
+    },
+    logDetail: {
+        color: COLORS.textMuted,
+        fontSize: 13,
+        marginTop: 2,
+    },
+    deleteMini: {
+        padding: "6px 12px",
+        borderRadius: 9999,
+        border: "none",
+        background: "transparent",
+        color: COLORS.danger,
+        fontWeight: 500,
+        fontSize: 13,
+        cursor: "pointer",
+    },
+    empty: {
+        color: COLORS.textMuted,
+        fontSize: 14,
+        textAlign: "center",
+        padding: "20px 0",
+    },
+    actions: {
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+    },
+    err: {
+        marginTop: 12,
+        color: COLORS.danger,
+        fontSize: 14,
+        textAlign: "center",
+        padding: "12px 16px",
+        background: "#fdf2f2",
+        borderRadius: 12,
+    },
 };

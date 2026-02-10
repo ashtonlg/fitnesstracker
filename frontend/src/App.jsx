@@ -3,6 +3,7 @@ import Home from "./pages/Home.jsx";
 import Session from "./pages/Session.jsx";
 import Progress from "./pages/Progress.jsx";
 import Goals from "./pages/Goals.jsx";
+import { COLORS } from "./theme.js";
 
 export default function App() {
     const [route, setRoute] = useState({ name: "home", params: {} });
@@ -12,12 +13,27 @@ export default function App() {
     return (
         <div style={styles.shell}>
             <header style={styles.header}>
-                <div style={styles.title} onClick={() => nav("home")}>Gym</div>
-                <div style={styles.tabs}>
-                    <button style={styles.tabBtn} onClick={() => nav("home")}>Home</button>
-                    <button style={styles.tabBtn} onClick={() => nav("progress")}>Progress</button>
-                    <button style={styles.tabBtn} onClick={() => nav("goals")}>Goals</button>
-                </div>
+                <div style={styles.title} onClick={() => nav("home")}>Fitness Tracker</div>
+                <nav style={styles.nav}>
+                    <button
+                        style={route.name === "home" ? styles.navBtnActive : styles.navBtn}
+                        onClick={() => nav("home")}
+                    >
+                        Home
+                    </button>
+                    <button
+                        style={route.name === "progress" ? styles.navBtnActive : styles.navBtn}
+                        onClick={() => nav("progress")}
+                    >
+                        Progress
+                    </button>
+                    <button
+                        style={route.name === "goals" ? styles.navBtnActive : styles.navBtn}
+                        onClick={() => nav("goals")}
+                    >
+                        Goals
+                    </button>
+                </nav>
             </header>
 
             <main style={styles.main}>
@@ -31,10 +47,58 @@ export default function App() {
 }
 
 const styles = {
-    shell: { fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, sans-serif", padding: 12, maxWidth: 520, margin: "0 auto" },
-    header: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 12 },
-    title: { fontWeight: 800, fontSize: 20, cursor: "pointer" },
-    tabs: { display: "flex", gap: 8 },
-    tabBtn: { padding: "8px 10px", borderRadius: 10, border: "1px solid #ddd", background: "#fff" },
-    main: { display: "flex", flexDirection: "column", gap: 12 }
+    shell: {
+        fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, sans-serif",
+        padding: 16,
+        maxWidth: 520,
+        margin: "0 auto",
+        backgroundColor: COLORS.bg,
+        minHeight: "100vh",
+        boxSizing: "border-box",
+    },
+    header: {
+        display: "flex",
+        flexDirection: "column",
+        gap: 12,
+        marginBottom: 20,
+        paddingBottom: 16,
+        borderBottom: `1px solid ${COLORS.border}`,
+    },
+    title: {
+        fontWeight: 700,
+        fontSize: 22,
+        cursor: "pointer",
+        color: COLORS.text,
+        letterSpacing: "-0.5px",
+    },
+    nav: {
+        display: "flex",
+        gap: 8,
+    },
+    navBtn: {
+        padding: "8px 16px",
+        borderRadius: 9999,
+        border: "none",
+        background: "transparent",
+        color: COLORS.textMuted,
+        fontWeight: 500,
+        fontSize: 14,
+        cursor: "pointer",
+        transition: "all 0.2s ease",
+    },
+    navBtnActive: {
+        padding: "8px 16px",
+        borderRadius: 9999,
+        border: "none",
+        background: COLORS.mustardLight,
+        color: COLORS.mustardDark,
+        fontWeight: 600,
+        fontSize: 14,
+        cursor: "pointer",
+    },
+    main: {
+        display: "flex",
+        flexDirection: "column",
+        gap: 16,
+    },
 };

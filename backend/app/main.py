@@ -3,10 +3,11 @@ from typing import List, Optional
 
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 from sqlalchemy import delete
 from sqlmodel import Session, select
 
-from .db import init_db, get_session
+from .db import init_db, get_session as get_db_session
 from .models import Exercise, WorkoutSession, SetEntry, FitnessGoal
 from .seed import seed_exercises
 
@@ -21,30 +22,35 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 @app.on_event("startup")
 def on_startup():
     init_db()
     # Seed exercises once
     from .db import engine
+
     with Session(engine) as db:
         seed_exercises(db)
+
 
 @app.get("/health")
 def health():
     return {"ok": True}
 
+
 @app.get("/")
 def root():
     return {"ok": True, "docs": "/docs", "health": "/health"}
 
+
 @app.get("/exercises", response_model=List[Exercise])
-def list_exercises(db: Session = Depends(get_session)):
+def list_exercises(db: Session = Depends(get_db_session)):
     return db.exec(select(Exercise).order_by(Exercise.name)).all()
 
-from pydantic import BaseModel
 
 class SessionStartIn(BaseModel):
     bodyweight_kg: Optional[float] = None
+
 
 class SessionOut(BaseModel):
     id: int
@@ -52,6 +58,7 @@ class SessionOut(BaseModel):
     ended_at: Optional[datetime]
     bodyweight_kg: Optional[float]
     sets: int
+
 
 class EntryOut(BaseModel):
     id: int
@@ -63,8 +70,9 @@ class EntryOut(BaseModel):
     created_at: datetime
     total_kg: float
 
+
 @app.post("/sessions/start", response_model=WorkoutSession)
-def start_session(payload: SessionStartIn | None = None, db: Session = Depends(get_session)):
+def start_session(payload: Optional[SessionStartIn] = None, db: Session = Depends(get_db_session)):
     bodyweight = payload.bodyweight_kg if payload else None
     s = WorkoutSession(bodyweight_kg=bodyweight)
     db.add(s)
@@ -72,8 +80,9 @@ def start_session(payload: SessionStartIn | None = None, db: Session = Depends(g
     db.refresh(s)
     return s
 
+
 @app.get("/sessions", response_model=List[SessionOut])
-def list_sessions(db: Session = Depends(get_session)):
+def list_sessions(db: Session = Depends(get_db_session)):
     sessions = db.exec(select(WorkoutSession).order_by(WorkoutSession.started_at.desc())).all()
     counts = {}
     for row in db.exec(select(SetEntry.session_id)).all():
@@ -97,18 +106,21 @@ def list_sessions(db: Session = Depends(get_session)):
         )
     return out
 
+
 @app.get("/sessions/{session_id}", response_model=WorkoutSession)
-def get_session(session_id: int, db: Session = Depends(get_session)):
+def get_session_by_id(session_id: int, db: Session = Depends(get_db_session)):
     s = db.get(WorkoutSession, session_id)
     if not s:
         raise HTTPException(404, "Session not found")
     return s
 
+
 class BodyweightIn(BaseModel):
     bodyweight_kg: float
 
+
 @app.post("/sessions/{session_id}/bodyweight", response_model=WorkoutSession)
-def set_bodyweight(session_id: int, payload: BodyweightIn, db: Session = Depends(get_session)):
+def set_bodyweight(session_id: int, payload: BodyweightIn, db: Session = Depends(get_db_session)):
     s = db.get(WorkoutSession, session_id)
     if not s:
         raise HTTPException(404, "Session not found")
@@ -118,8 +130,9 @@ def set_bodyweight(session_id: int, payload: BodyweightIn, db: Session = Depends
     db.refresh(s)
     return s
 
+
 @app.post("/sessions/{session_id}/end", response_model=WorkoutSession)
-def end_session(session_id: int, db: Session = Depends(get_session)):
+def end_session(session_id: int, db: Session = Depends(get_db_session)):
     s = db.get(WorkoutSession, session_id)
     if not s:
         raise HTTPException(404, "Session not found")
@@ -130,19 +143,22 @@ def end_session(session_id: int, db: Session = Depends(get_session)):
         db.refresh(s)
     return s
 
+
 class SetEntryIn(BaseModel):
     exercise_id: int
     weight_kg: float
     reps: int
 
-def total_load(entry: SetEntry, ex: Exercise | None, session: WorkoutSession | None) -> float:
+
+def total_load(entry: SetEntry, ex: Optional[Exercise], session: Optional[WorkoutSession]) -> float:
     total = float(entry.weight_kg)
     if ex and ex.uses_bodyweight and session and session.bodyweight_kg is not None:
         total += float(session.bodyweight_kg)
     return total
 
+
 @app.post("/sessions/{session_id}/entries", response_model=SetEntry)
-def add_entry(session_id: int, payload: SetEntryIn, db: Session = Depends(get_session)):
+def add_entry(session_id: int, payload: SetEntryIn, db: Session = Depends(get_db_session)):
     s = db.get(WorkoutSession, session_id)
     if not s:
         raise HTTPException(404, "Session not found")
@@ -164,8 +180,9 @@ def add_entry(session_id: int, payload: SetEntryIn, db: Session = Depends(get_se
     db.refresh(entry)
     return entry
 
+
 @app.get("/sessions/{session_id}/entries", response_model=List[EntryOut])
-def list_entries(session_id: int, db: Session = Depends(get_session)):
+def list_entries(session_id: int, db: Session = Depends(get_db_session)):
     s = db.get(WorkoutSession, session_id)
     if not s:
         raise HTTPException(404, "Session not found")
@@ -194,14 +211,16 @@ def list_entries(session_id: int, db: Session = Depends(get_session)):
         )
     return out
 
+
 @app.delete("/entries/{entry_id}")
-def delete_entry(entry_id: int, db: Session = Depends(get_session)):
+def delete_entry(entry_id: int, db: Session = Depends(get_db_session)):
     entry = db.get(SetEntry, entry_id)
     if not entry:
         raise HTTPException(404, "Entry not found")
     db.delete(entry)
     db.commit()
     return {"ok": True}
+
 
 class ProgressPoint(BaseModel):
     date: datetime
@@ -210,12 +229,49 @@ class ProgressPoint(BaseModel):
     reps: int
     e1rm: float
 
+
+class ProgressSummary(BaseModel):
+    exercise_id: int
+    date: datetime
+    weight_kg: float
+    total_kg: float
+    reps: int
+
+
 def epley_1rm(weight_kg: float, reps: int) -> float:
     # Simple, stable heuristic
     return float(weight_kg) * (1.0 + (float(reps) / 30.0))
 
+
+@app.get("/progress/summary", response_model=List[ProgressSummary])
+def progress_summary(db: Session = Depends(get_db_session)):
+    exercises = {e.id: e for e in db.exec(select(Exercise)).all()}
+    sessions = {s.id: s for s in db.exec(select(WorkoutSession)).all()}
+    rows = db.exec(select(SetEntry).order_by(SetEntry.created_at.desc())).all()
+
+    seen = set()
+    out: List[ProgressSummary] = []
+    for r in rows:
+        if r.exercise_id in seen:
+            continue
+        seen.add(r.exercise_id)
+        ex = exercises.get(r.exercise_id)
+        session = sessions.get(r.session_id)
+        total = total_load(r, ex, session)
+        out.append(
+            ProgressSummary(
+                exercise_id=r.exercise_id,
+                date=r.created_at,
+                weight_kg=r.weight_kg,
+                total_kg=total,
+                reps=r.reps,
+            )
+        )
+    return out
+
+
 @app.get("/progress/exercise/{exercise_id}", response_model=List[ProgressPoint])
-def exercise_progress(exercise_id: int, db: Session = Depends(get_session)):
+def exercise_progress(exercise_id: int, db: Session = Depends(get_db_session)):
     ex = db.get(Exercise, exercise_id)
     if not ex:
         raise HTTPException(404, "Exercise not found")
@@ -244,12 +300,14 @@ def exercise_progress(exercise_id: int, db: Session = Depends(get_session)):
         )
     return out
 
+
 class BodyweightPoint(BaseModel):
     date: datetime
     weight_kg: float
 
+
 @app.delete("/sessions/{session_id}")
-def delete_session(session_id: int, db: Session = Depends(get_session)):
+def delete_session(session_id: int, db: Session = Depends(get_db_session)):
     s = db.get(WorkoutSession, session_id)
     if not s:
         raise HTTPException(404, "Session not found")
@@ -258,12 +316,14 @@ def delete_session(session_id: int, db: Session = Depends(get_session)):
     db.commit()
     return {"ok": True}
 
+
 class GoalIn(BaseModel):
     type: str
     exercise_id: Optional[int] = None
     target_weight_kg: Optional[float] = None
     target_reps: Optional[int] = None
     target_sessions_per_week: Optional[int] = None
+
 
 class GoalOut(BaseModel):
     id: int
@@ -274,14 +334,16 @@ class GoalOut(BaseModel):
     target_sessions_per_week: Optional[int]
     created_at: datetime
 
+
 class GoalsSummary(BaseModel):
     chinup_reps: int
     chinup_sets: int
     avg_load_kg: float
     total_sets: int
 
+
 @app.get("/goals", response_model=List[GoalOut])
-def list_goals(db: Session = Depends(get_session)):
+def list_goals(db: Session = Depends(get_db_session)):
     goals = db.exec(select(FitnessGoal).order_by(FitnessGoal.created_at.desc())).all()
     return [
         GoalOut(
@@ -296,8 +358,9 @@ def list_goals(db: Session = Depends(get_session)):
         for g in goals
     ]
 
+
 @app.post("/goals", response_model=GoalOut)
-def create_goal(payload: GoalIn, db: Session = Depends(get_session)):
+def create_goal(payload: GoalIn, db: Session = Depends(get_db_session)):
     goal_type = (payload.type or "").strip().lower()
     if goal_type not in {"pr", "frequency"}:
         raise HTTPException(400, "Invalid goal type")
@@ -333,8 +396,9 @@ def create_goal(payload: GoalIn, db: Session = Depends(get_session)):
         created_at=goal.created_at,
     )
 
+
 @app.delete("/goals/{goal_id}")
-def delete_goal(goal_id: int, db: Session = Depends(get_session)):
+def delete_goal(goal_id: int, db: Session = Depends(get_db_session)):
     goal = db.get(FitnessGoal, goal_id)
     if not goal:
         raise HTTPException(404, "Goal not found")
@@ -342,8 +406,9 @@ def delete_goal(goal_id: int, db: Session = Depends(get_session)):
     db.commit()
     return {"ok": True}
 
+
 @app.get("/goals/summary", response_model=GoalsSummary)
-def goals_summary(db: Session = Depends(get_session)):
+def goals_summary(db: Session = Depends(get_db_session)):
     exercises = db.exec(select(Exercise)).all()
     ex_map = {e.id: e for e in exercises}
     chinup_ids = {e.id for e in exercises if "chin" in e.name.lower()}
@@ -373,8 +438,9 @@ def goals_summary(db: Session = Depends(get_session)):
         total_sets=total_sets,
     )
 
+
 @app.post("/admin/reset")
-def admin_reset(db: Session = Depends(get_session)):
+def admin_reset(db: Session = Depends(get_db_session)):
     db.exec(delete(SetEntry))
     db.exec(delete(WorkoutSession))
     db.exec(delete(FitnessGoal))
@@ -382,8 +448,9 @@ def admin_reset(db: Session = Depends(get_session)):
     seed_exercises(db)
     return {"ok": True}
 
+
 @app.get("/bodyweight", response_model=List[BodyweightPoint])
-def bodyweight_history(db: Session = Depends(get_session)):
+def bodyweight_history(db: Session = Depends(get_db_session)):
     rows = db.exec(
         select(WorkoutSession)
         .where(WorkoutSession.bodyweight_kg.is_not(None))
@@ -395,6 +462,43 @@ def bodyweight_history(db: Session = Depends(get_session)):
             BodyweightPoint(
                 date=s.started_at,
                 weight_kg=float(s.bodyweight_kg),
+            )
+        )
+    return out
+
+
+class HeatmapEntry(BaseModel):
+    id: int
+    session_id: int
+    exercise_id: int
+    weight_kg: float
+    reps: int
+    created_at: datetime
+    total_kg: float
+
+
+@app.get("/heatmap/entries", response_model=List[HeatmapEntry])
+def heatmap_entries(db: Session = Depends(get_db_session)):
+    """Get all workout entries for the heatmap visualization."""
+    entries = db.exec(select(SetEntry).order_by(SetEntry.created_at.desc())).all()
+
+    exercises = {e.id: e for e in db.exec(select(Exercise)).all()}
+    sessions = {s.id: s for s in db.exec(select(WorkoutSession)).all()}
+
+    out: List[HeatmapEntry] = []
+    for entry in entries:
+        ex = exercises.get(entry.exercise_id)
+        session = sessions.get(entry.session_id)
+        total = total_load(entry, ex, session)
+        out.append(
+            HeatmapEntry(
+                id=entry.id,
+                session_id=entry.session_id,
+                exercise_id=entry.exercise_id,
+                weight_kg=entry.weight_kg,
+                reps=entry.reps,
+                created_at=entry.created_at,
+                total_kg=total,
             )
         )
     return out
